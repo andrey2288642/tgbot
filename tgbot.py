@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Конфигурация
 BOT_TOKEN = "8520295118:AAFxxho33hC5AaMT0RPF4uQDfaCcvnwdttk"
-API_KEY = "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"
+API_KEY = "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"
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 bot = telebot.TeleBot(BOT_TOKEN)
